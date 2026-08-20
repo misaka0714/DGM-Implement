@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the accompanying paper."
+title: "DGM Algorithm: Cross-Model Index Migration for Approximate Nearest Neighbor Search"
+type: software
+authors:
+  - name: "DGM authors"
+repository-code: "https://github.com/misaka0714/DGM-Algorithm"
+license: Apache-2.0
+version: 0.1.0
