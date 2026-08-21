@@ -1,4 +1,4 @@
-# DGM Algorithm
+# DGM-Implement
 
 This repository contains a standalone C++17 implementation of the algorithms
 introduced in **Cross-Model Index Migration for Approximate Nearest Neighbor
