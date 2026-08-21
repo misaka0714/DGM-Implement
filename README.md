@@ -6,18 +6,34 @@ Search**. It is intended for reading, integration, and extension of DGM itself.
 It does not contain dataset loaders, benchmark drivers, paper-specific
 configurations, generated indexes, or experiment results.
 
-## Why graph migration?
+## Problem Background and Intuition
 
 A graph ANN index records more than a vector array. Its edges were selected
-using the distances and neighborhood ordering induced by the embedding model
-available at construction time. Re-encoding the corpus with another model and
-replacing only the vectors leaves search traversing stale edges under a new
-distance function.
+using the distances, neighborhood membership, and navigation cues induced by
+the embedding model available at construction time. Re-encoding the corpus
+with another model changes those geometric relations. Replacing only the
+stored vectors therefore leaves search evaluating new-model distances while
+traversing edges chosen in the old space, which can lead to stale
+neighborhoods and false local optima.
 
-The old topology is nevertheless useful: new-model neighbors often remain
-reachable through short paths even when individual edges and rankings have
-changed. DGM uses that residual reachability to discover candidates and uses
-exact new-model distances to determine every output adjacency list.
+DGM is motivated by an empirical property of the old topology that we call
+**residual reachability**. The old and new embedding spaces need not be
+coordinate-aligned or geometrically compatible, but both models encode the
+same ID-paired objects and may preserve part of the similarity relations among
+them. The old graph materializes these relations not only as direct edges but
+also as multi-hop connectivity. Consequently, an exact new-model neighbor may
+disappear from a node's old adjacency list yet remain reachable through a
+short path in the old graph.
+
+Residual reachability concerns the availability of useful candidates, not the
+validity of inherited edges under the new metric. Old-model rankings and
+construction geometry can both degrade after a model switch, so DGM treats
+the old topology only as a candidate-discovery substrate. Exact new-model
+distances validate the candidates and determine every output adjacency list.
+This separation provides the central intuition for graph-index migration: reuse
+short-path structure instead of rediscovering all candidate relationships, but
+never assume that the old graph is already correct for the new embedding
+space.
 
 ## Algorithms
 
