@@ -86,6 +86,51 @@ DGM-Search follows the paper's asynchronous update semantics: workers may read
 lists repaired earlier in the same pass, so parallel execution order can affect
 the final graph.
 
+## Preparing Datasets and Embeddings
+
+DGM does not redistribute datasets or model checkpoints. The following are the
+source pages and checkpoint identifiers used for the paper workloads. Hugging
+Face datasets can be obtained with `datasets.load_dataset`, and linked model
+identifiers can be passed to the loading API documented on each model card.
+Some providers may require authentication or acceptance of their terms.
+
+| Workload | Dataset source | Old encoder -> new encoder |
+| --- | --- | --- |
+| CIFAR-10 | [`torchvision.datasets.CIFAR10`](https://docs.pytorch.org/vision/stable/generated/torchvision.datasets.CIFAR10.html) with `download=True` | [`torchvision.models.resnet18`](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.resnet18.html) -> [`torchvision.models.resnet34`](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.resnet34.html), both with `IMAGENET1K_V1` weights |
+| AG News | [`fancyzhx/ag_news`](https://huggingface.co/datasets/fancyzhx/ag_news) | [`nvidia/NV-Embed-v2`](https://huggingface.co/nvidia/NV-Embed-v2) -> [`Salesforce/SFR-Embedding-Mistral`](https://huggingface.co/Salesforce/SFR-Embedding-Mistral) |
+| Yelp | [`Yelp/yelp_review_full`](https://huggingface.co/datasets/Yelp/yelp_review_full) | [`sentence-transformers/all-distilroberta-v1`](https://huggingface.co/sentence-transformers/all-distilroberta-v1) -> [`BAAI/bge-base-en-v1.5`](https://huggingface.co/BAAI/bge-base-en-v1.5) |
+| Amazon-1536 | [`fancyzhx/amazon_polarity`](https://huggingface.co/datasets/fancyzhx/amazon_polarity) | [`Qwen/Qwen2-1.5B-Instruct`](https://huggingface.co/Qwen/Qwen2-1.5B-Instruct) -> [`Qwen/Qwen2.5-1.5B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct) |
+| FineWeb | [`HuggingFaceFW/fineweb-edu`](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), `sample-10BT` configuration | [`sentence-transformers/multi-qa-MiniLM-L6-cos-v1`](https://huggingface.co/sentence-transformers/multi-qa-MiniLM-L6-cos-v1) -> [`sentence-transformers/paraphrase-MiniLM-L3-v2`](https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L3-v2) |
+| Yahoo | [`community-datasets/yahoo_answers_topics`](https://huggingface.co/datasets/community-datasets/yahoo_answers_topics) | [`intfloat/e5-base-v2`](https://huggingface.co/intfloat/e5-base-v2) -> [`thenlper/gte-base`](https://huggingface.co/thenlper/gte-base) |
+| QuickDraw | [official Quick, Draw! bitmap files](https://github.com/googlecreativelab/quickdraw-dataset) | [`facebook/metaclip-b32-400m`](https://huggingface.co/facebook/metaclip-b32-400m) -> [`laion/CLIP-ViT-B-32-laion2B-s34B-b79K`](https://huggingface.co/laion/CLIP-ViT-B-32-laion2B-s34B-b79K) |
+| MS MARCO | [official MS MARCO](https://microsoft.github.io/msmarco/) or the [`Tevatron/msmarco-passage-corpus`](https://huggingface.co/datasets/Tevatron/msmarco-passage-corpus) passage loader | [`intfloat/e5-base-v2`](https://huggingface.co/intfloat/e5-base-v2) -> [`thenlper/gte-base`](https://huggingface.co/thenlper/gte-base) |
+| C4 English (scale study) | [`allenai/c4`](https://huggingface.co/datasets/allenai/c4), `en` configuration | [`intfloat/e5-base-v2`](https://huggingface.co/intfloat/e5-base-v2) -> [`thenlper/gte-base`](https://huggingface.co/thenlper/gte-base) |
+
+Prepare an old graph and its replacement embedding matrix as follows:
+
+1. Fix an immutable sequence of object IDs. If a workload is sampled, select
+   the IDs once and reuse exactly that sequence for both encoders.
+2. Encode every object with the old and new checkpoints in evaluation mode.
+   Follow each model card's own text prefix, tokenization, pooling,
+   normalization, image transform, and feature-extraction instructions; these
+   details are model-specific and should not be replaced with one generic
+   pooling rule.
+3. Build or load the input graph using the old embeddings. Store the new
+   embeddings as a contiguous, row-major `float32` matrix in the same object-ID
+   order, then pass that matrix to `dgm::EmbeddingSpace`.
+4. Select the distance metric used for the target embedding space. Explicit
+   L2 normalization is optional for `dgm::Metric::kCosine` because the library
+   computes vector norms, although model-prescribed normalization should still
+   be retained.
+
+The graph node count must equal the number of target rows, and node IDs must
+map to the same objects in both versions. The old and new embedding dimensions
+need not match: only the target dimension is supplied to `EmbeddingSpace`.
+For traceability, retain the dataset revision and split, selected object IDs,
+checkpoint revisions, input formatting, pooling method, normalization choice,
+and target metric. Dataset and model licenses remain those of their respective
+providers.
+
 ## Build
 
 The implementation has no third-party runtime dependency.
