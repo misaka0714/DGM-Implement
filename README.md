@@ -3,8 +3,6 @@
 This repository contains a standalone C++17 implementation of the algorithms
 introduced in **Cross-Model Index Migration for Approximate Nearest Neighbor
 Search**. It is intended for reading, integration, and extension of DGM itself.
-It does not contain dataset loaders, benchmark drivers, paper-specific
-configurations, generated indexes, or experiment results.
 
 ## Problem Background and Intuition
 
